@@ -40,6 +40,18 @@ public class ChatMember {
 		return new ChatMember(null, chatRoomId, memberUuid, null, true, status, joinedAt);
 	}
 
+	public ChatMember withLastRead(UUID lastReadMessageUuid) {
+		return new ChatMember(
+				chatMemberId,
+				chatRoomId,
+				memberUuid,
+				lastReadMessageUuid,
+				notificationEnabled,
+				status,
+				joinedAt
+		);
+	}
+
 	public ChatMember withStatus(ChatMemberStatus nextStatus, Instant now) {
 		Instant nextJoinedAt = joinedAt;
 		if (nextStatus == ChatMemberStatus.APPROVED && nextJoinedAt == null) {
