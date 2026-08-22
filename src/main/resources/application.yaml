@@ -1,16 +1,29 @@
 spring:
   application:
     name: planwith-fo-chat
-  # DB: same keys locally (IntelliJ env) and in Docker (env/{service}.env).
-  # Omit or leave unset until the service adds a JDBC driver / JPA.
   datasource:
-    url: ${DB_URL:}
-    username: ${DB_USERNAME:}
-    password: ${DB_PASSWORD:}
+    url: ${DB_URL:jdbc:mysql://127.0.0.1:3307/chat_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=UTF-8}
+    username: ${DB_USERNAME:chat_user}
+    password: ${DB_PASSWORD:chat_pass}
   jpa:
     open-in-view: false
     hibernate:
       ddl-auto: ${JPA_DDL_AUTO:update}
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  jackson:
+    time-zone: UTC
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: ${KAFKA_CONSUMER_GROUP:planwith-fo-chat}
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      auto-offset-reset: earliest
+    listener:
+      auto-startup: ${CHAT_KAFKA_CONSUMER_ENABLED:${CHAT_KAFKA_ENABLED:false}}
 
 server:
   address: ${SERVER_ADDRESS:0.0.0.0}
@@ -45,3 +58,14 @@ app:
     pw: ${LOGIN_PASSWORD:1234}
   deploy:
     marker: ${DEPLOY_MARKER:planwith-fo-chat-deploy-v1}
+  kafka:
+    enabled: ${CHAT_KAFKA_ENABLED:false}
+    consumer-enabled: ${CHAT_KAFKA_CONSUMER_ENABLED:${CHAT_KAFKA_ENABLED:false}}
+    created-topic: ${MEETING_TOPIC_CREATED:planwith.meeting.created}
+    completed-topic: ${MEETING_TOPIC_COMPLETED:planwith.meeting.completed}
+    participation-changed-topic: ${MEETING_TOPIC_PARTICIPATION_CHANGED:planwith.meeting.participation.changed}
+
+management:
+  health:
+    kafka:
+      enabled: ${CHAT_KAFKA_ENABLED:false}
