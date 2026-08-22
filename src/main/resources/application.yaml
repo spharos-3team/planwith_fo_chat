@@ -1,6 +1,16 @@
 spring:
   application:
     name: planwith-fo-chat
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.redis.autoconfigure.RedisAutoConfiguration
+      - org.springframework.boot.redis.autoconfigure.RedisReactiveAutoConfiguration
+      - org.springframework.boot.redis.autoconfigure.health.RedisHealthContributorAutoConfiguration
+      - org.springframework.boot.redis.autoconfigure.health.RedisReactiveHealthContributorAutoConfiguration
+      - org.springframework.boot.data.redis.autoconfigure.DataRedisAutoConfiguration
+      - org.springframework.boot.data.redis.autoconfigure.DataRedisReactiveAutoConfiguration
+      - org.springframework.boot.data.redis.autoconfigure.DataRedisRepositoriesAutoConfiguration
+      - org.springframework.boot.data.redis.autoconfigure.DataRedisReactiveRepositoriesAutoConfiguration
   datasource:
     url: ${DB_URL:jdbc:mysql://127.0.0.1:3307/chat_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=UTF-8}
     username: ${DB_USERNAME:chat_user}
@@ -20,6 +30,9 @@ spring:
   data:
     mongodb:
       auto-index-creation: true
+    redis:
+      host: ${REDIS_HOST:127.0.0.1}
+      port: ${REDIS_PORT:6379}
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     consumer:
@@ -69,6 +82,12 @@ app:
     created-topic: ${MEETING_TOPIC_CREATED:planwith.meeting.created}
     completed-topic: ${MEETING_TOPIC_COMPLETED:planwith.meeting.completed}
     participation-changed-topic: ${MEETING_TOPIC_PARTICIPATION_CHANGED:planwith.meeting.participation.changed}
+  redis:
+    enabled: ${CHAT_REDIS_ENABLED:false}
+    host: ${REDIS_HOST:127.0.0.1}
+    port: ${REDIS_PORT:6379}
+    channel-prefix: "${CHAT_REDIS_CHANNEL_PREFIX:chat:room:}"
+    presence-ttl: ${CHAT_PRESENCE_TTL:5m}
 
 management:
   health:
@@ -76,3 +95,5 @@ management:
       enabled: ${CHAT_KAFKA_ENABLED:false}
     mongo:
       enabled: ${CHAT_MONGO_HEALTH_ENABLED:true}
+    redis:
+      enabled: ${CHAT_REDIS_ENABLED:false}

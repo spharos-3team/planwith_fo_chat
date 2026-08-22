@@ -10,6 +10,14 @@ spring:
       - org.springframework.boot.data.mongodb.autoconfigure.DataMongoReactiveAutoConfiguration
       - org.springframework.boot.data.mongodb.autoconfigure.DataMongoRepositoriesAutoConfiguration
       - org.springframework.boot.data.mongodb.autoconfigure.DataMongoReactiveRepositoriesAutoConfiguration
+      - org.springframework.boot.redis.autoconfigure.RedisAutoConfiguration
+      - org.springframework.boot.redis.autoconfigure.RedisReactiveAutoConfiguration
+      - org.springframework.boot.redis.autoconfigure.health.RedisHealthContributorAutoConfiguration
+      - org.springframework.boot.redis.autoconfigure.health.RedisReactiveHealthContributorAutoConfiguration
+      - org.springframework.boot.data.redis.autoconfigure.DataRedisAutoConfiguration
+      - org.springframework.boot.data.redis.autoconfigure.DataRedisReactiveAutoConfiguration
+      - org.springframework.boot.data.redis.autoconfigure.DataRedisRepositoriesAutoConfiguration
+      - org.springframework.boot.data.redis.autoconfigure.DataRedisReactiveRepositoriesAutoConfiguration
   data:
     mongodb:
       auto-index-creation: false
@@ -47,6 +55,12 @@ app:
     created-topic: planwith.meeting.created
     completed-topic: planwith.meeting.completed
     participation-changed-topic: planwith.meeting.participation.changed
+  redis:
+    enabled: false
+    host: 127.0.0.1
+    port: 6379
+    channel-prefix: "chat:room:"
+    presence-ttl: 5m
 
 management:
   health:
@@ -55,4 +69,6 @@ management:
     kafka:
       enabled: false
     mongo:
+      enabled: false
+    redis:
       enabled: false
