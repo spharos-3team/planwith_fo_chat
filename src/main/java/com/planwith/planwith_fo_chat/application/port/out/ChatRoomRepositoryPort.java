@@ -12,4 +12,6 @@ public interface ChatRoomRepositoryPort {
 	Optional<ChatRoom> findByMeetingUuid(UUID meetingUuid);
 
 	Optional<ChatRoom> findByChatRoomId(Long chatRoomId);
+
+	Optional<ChatRoom> findByChatRoomUuid(UUID chatRoomUuid);
 }

@@ -22,4 +22,8 @@ public enum ChatMemberStatus {
 	public boolean isJoinAttempt() {
 		return this == PENDING || this == APPROVED;
 	}
+
+	public boolean isApproved() {
+		return this == APPROVED;
+	}
 }

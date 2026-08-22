@@ -15,6 +15,11 @@ spring:
           time_zone: UTC
   jackson:
     time-zone: UTC
+  mongodb:
+    uri: ${MONGO_URI:mongodb://127.0.0.1:27017/chat_db}
+  data:
+    mongodb:
+      auto-index-creation: true
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     consumer:
@@ -69,3 +74,5 @@ management:
   health:
     kafka:
       enabled: ${CHAT_KAFKA_ENABLED:false}
+    mongo:
+      enabled: ${CHAT_MONGO_HEALTH_ENABLED:true}
