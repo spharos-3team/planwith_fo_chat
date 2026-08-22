@@ -45,6 +45,12 @@ public class ChatRoomPersistenceAdapter implements ChatRoomRepositoryPort {
 		return chatRoomJpaRepository.findById(chatRoomId).map(this::toDomain);
 	}
 
+	@Override
+	@Transactional(readOnly = true)
+	public Optional<ChatRoom> findByChatRoomUuid(UUID chatRoomUuid) {
+		return chatRoomJpaRepository.findByChatRoomUuid(chatRoomUuid.toString()).map(this::toDomain);
+	}
+
 	private ChatRoom toDomain(ChatRoomJpaEntity entity) {
 		return new ChatRoom(
 				entity.getChatRoomId(),

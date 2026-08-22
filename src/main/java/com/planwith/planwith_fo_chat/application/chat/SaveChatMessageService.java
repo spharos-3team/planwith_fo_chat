@@ -1,0 +1,69 @@
+package com.planwith.planwith_fo_chat.application.chat;
+
+import java.time.Instant;
+import java.util.Objects;
+
+import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
+
+import com.planwith.planwith_fo_chat.application.exception.BusinessException;
+import com.planwith.planwith_fo_chat.application.exception.ErrorCode;
+import com.planwith.planwith_fo_chat.application.port.in.SaveChatMessageUseCase;
+import com.planwith.planwith_fo_chat.application.port.out.ChatMemberRepositoryPort;
+import com.planwith.planwith_fo_chat.application.port.out.ChatMessageRepositoryPort;
+import com.planwith.planwith_fo_chat.application.port.out.ChatRoomRepositoryPort;
+import com.planwith.planwith_fo_chat.domain.chat.ChatMember;
+import com.planwith.planwith_fo_chat.domain.chat.ChatMessage;
+import com.planwith.planwith_fo_chat.domain.chat.ChatRoom;
+
+@Service
+public class SaveChatMessageService implements SaveChatMessageUseCase {
+
+	private final ChatRoomRepositoryPort chatRoomRepositoryPort;
+	private final ChatMemberRepositoryPort chatMemberRepositoryPort;
+	private final ChatMessageRepositoryPort chatMessageRepositoryPort;
+
+	public SaveChatMessageService(
+			ChatRoomRepositoryPort chatRoomRepositoryPort,
+			ChatMemberRepositoryPort chatMemberRepositoryPort,
+			ChatMessageRepositoryPort chatMessageRepositoryPort
+	) {
+		this.chatRoomRepositoryPort = chatRoomRepositoryPort;
+		this.chatMemberRepositoryPort = chatMemberRepositoryPort;
+		this.chatMessageRepositoryPort = chatMessageRepositoryPort;
+	}
+
+	@Override
+	public ChatMessage save(Command command) {
+		Objects.requireNonNull(command, "Save message command is required.");
+		if (command.chatRoomUuid() == null) {
+			throw new IllegalArgumentException("chatRoomUuid is required.");
+		}
+		if (command.senderUuid() == null) {
+			throw new IllegalArgumentException("senderUuid is required.");
+		}
+		if (!StringUtils.hasText(command.messageType())) {
+			throw new IllegalArgumentException("messageType is required.");
+		}
+		ChatRoom room = chatRoomRepositoryPort.findByChatRoomUuid(command.chatRoomUuid())
+				.orElseThrow(() -> new BusinessException(ErrorCode.CHAT_ROOM_NOT_FOUND));
+		if (room.isEnded()) {
+			throw new BusinessException(ErrorCode.CHAT_ROOM_ENDED);
+		}
+		ChatMember member = chatMemberRepositoryPort
+				.findByChatRoomIdAndMemberUuid(room.getChatRoomId(), command.senderUuid())
+				.orElseThrow(() -> new BusinessException(ErrorCode.CHAT_MEMBER_NOT_ALLOWED));
+		if (!member.getStatus().isApproved()) {
+			throw new BusinessException(ErrorCode.CHAT_MEMBER_NOT_ALLOWED);
+		}
+		Instant now = command.occurredAt() != null ? command.occurredAt() : Instant.now();
+		return chatMessageRepositoryPort.save(ChatMessage.create(
+				command.chatRoomUuid(),
+				command.senderUuid(),
+				command.messageType().trim(),
+				command.content(),
+				command.files(),
+				now
+		));
+	}
+}
