@@ -1,5 +1,6 @@
 package com.planwith.planwith_fo_chat.adapter.out.persistence.chat;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -10,6 +11,7 @@ import com.planwith.planwith_fo_chat.application.exception.BusinessException;
 import com.planwith.planwith_fo_chat.application.exception.ErrorCode;
 import com.planwith.planwith_fo_chat.application.port.out.ChatMemberRepositoryPort;
 import com.planwith.planwith_fo_chat.domain.chat.ChatMember;
+import com.planwith.planwith_fo_chat.domain.chat.ChatMemberStatus;
 
 @Component
 @Transactional
@@ -50,6 +52,15 @@ public class ChatMemberPersistenceAdapter implements ChatMemberRepositoryPort {
 		return chatMemberJpaRepository
 				.findByChatRoom_ChatRoomIdAndMemberUuid(chatRoomId, memberUuid.toString())
 				.map(this::toDomain);
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public List<ChatMember> findByChatRoomIdAndStatus(Long chatRoomId, ChatMemberStatus status) {
+		return chatMemberJpaRepository.findByChatRoom_ChatRoomIdAndStatus(chatRoomId, status)
+				.stream()
+				.map(this::toDomain)
+				.toList();
 	}
 
 	private ChatMember toDomain(ChatMemberJpaEntity entity) {

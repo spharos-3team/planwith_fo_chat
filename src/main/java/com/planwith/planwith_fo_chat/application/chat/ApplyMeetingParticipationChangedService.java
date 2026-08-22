@@ -14,11 +14,13 @@ import org.springframework.util.StringUtils;
 import com.planwith.planwith_fo_chat.application.exception.ChatRoomNotReadyException;
 import com.planwith.planwith_fo_chat.application.port.in.ApplyMeetingParticipationChangedUseCase;
 import com.planwith.planwith_fo_chat.application.port.out.ChatMemberRepositoryPort;
+import com.planwith.planwith_fo_chat.application.port.out.ChatRoomMemberReadRepositoryPort;
 import com.planwith.planwith_fo_chat.application.port.out.ChatRoomRepositoryPort;
 import com.planwith.planwith_fo_chat.application.port.out.ProcessedChatEventPort;
 import com.planwith.planwith_fo_chat.domain.chat.ChatMember;
 import com.planwith.planwith_fo_chat.domain.chat.ChatMemberStatus;
 import com.planwith.planwith_fo_chat.domain.chat.ChatRoom;
+import com.planwith.planwith_fo_chat.domain.chat.ChatRoomMemberRead;
 
 @Service
 @Transactional
@@ -30,15 +32,18 @@ public class ApplyMeetingParticipationChangedService implements ApplyMeetingPart
 
 	private final ChatRoomRepositoryPort chatRoomRepositoryPort;
 	private final ChatMemberRepositoryPort chatMemberRepositoryPort;
+	private final ChatRoomMemberReadRepositoryPort chatRoomMemberReadRepositoryPort;
 	private final ProcessedChatEventPort processedChatEventPort;
 
 	public ApplyMeetingParticipationChangedService(
 			ChatRoomRepositoryPort chatRoomRepositoryPort,
 			ChatMemberRepositoryPort chatMemberRepositoryPort,
+			ChatRoomMemberReadRepositoryPort chatRoomMemberReadRepositoryPort,
 			ProcessedChatEventPort processedChatEventPort
 	) {
 		this.chatRoomRepositoryPort = chatRoomRepositoryPort;
 		this.chatMemberRepositoryPort = chatMemberRepositoryPort;
+		this.chatRoomMemberReadRepositoryPort = chatRoomMemberReadRepositoryPort;
 		this.processedChatEventPort = processedChatEventPort;
 	}
 
@@ -85,6 +90,17 @@ public class ApplyMeetingParticipationChangedService implements ApplyMeetingPart
 				.orElseGet(() -> chatMemberRepositoryPort.save(
 						ChatMember.of(room.getChatRoomId(), command.memberUuid(), status, now)
 				));
+		if (status.isApproved()) {
+			chatRoomMemberReadRepositoryPort.findByMemberUuidAndChatRoomUuid(command.memberUuid(), room.getChatRoomUuid())
+					.orElseGet(() -> chatRoomMemberReadRepositoryPort.save(
+							ChatRoomMemberRead.empty(
+									command.memberUuid(),
+									room.getChatRoomUuid(),
+									room.getRoomName(),
+									now
+							)
+					));
+		}
 		markProcessed(command, now);
 		log.info(
 				"ApplyMeetingParticipationChangedService : apply : member synced - meetingUuid={} memberUuid={} status={}",

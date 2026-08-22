@@ -2,6 +2,7 @@ package com.planwith.planwith_fo_chat.application.chat;
 
 import java.time.Instant;
 import java.util.Objects;
+import java.util.UUID;
 
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -10,6 +11,7 @@ import com.planwith.planwith_fo_chat.application.exception.BusinessException;
 import com.planwith.planwith_fo_chat.application.exception.ErrorCode;
 import com.planwith.planwith_fo_chat.application.port.in.SaveChatMessageUseCase;
 import com.planwith.planwith_fo_chat.application.port.out.ChatMemberRepositoryPort;
+import com.planwith.planwith_fo_chat.application.port.out.ChatMessageCreatedEventPort;
 import com.planwith.planwith_fo_chat.application.port.out.ChatMessageRepositoryPort;
 import com.planwith.planwith_fo_chat.application.port.out.ChatRoomRepositoryPort;
 import com.planwith.planwith_fo_chat.domain.chat.ChatMember;
@@ -22,15 +24,18 @@ public class SaveChatMessageService implements SaveChatMessageUseCase {
 	private final ChatRoomRepositoryPort chatRoomRepositoryPort;
 	private final ChatMemberRepositoryPort chatMemberRepositoryPort;
 	private final ChatMessageRepositoryPort chatMessageRepositoryPort;
+	private final ChatMessageCreatedEventPort chatMessageCreatedEventPort;
 
 	public SaveChatMessageService(
 			ChatRoomRepositoryPort chatRoomRepositoryPort,
 			ChatMemberRepositoryPort chatMemberRepositoryPort,
-			ChatMessageRepositoryPort chatMessageRepositoryPort
+			ChatMessageRepositoryPort chatMessageRepositoryPort,
+			ChatMessageCreatedEventPort chatMessageCreatedEventPort
 	) {
 		this.chatRoomRepositoryPort = chatRoomRepositoryPort;
 		this.chatMemberRepositoryPort = chatMemberRepositoryPort;
 		this.chatMessageRepositoryPort = chatMessageRepositoryPort;
+		this.chatMessageCreatedEventPort = chatMessageCreatedEventPort;
 	}
 
 	@Override
@@ -57,7 +62,7 @@ public class SaveChatMessageService implements SaveChatMessageUseCase {
 			throw new BusinessException(ErrorCode.CHAT_MEMBER_NOT_ALLOWED);
 		}
 		Instant now = command.occurredAt() != null ? command.occurredAt() : Instant.now();
-		return chatMessageRepositoryPort.save(ChatMessage.create(
+		ChatMessage saved = chatMessageRepositoryPort.save(ChatMessage.create(
 				command.chatRoomUuid(),
 				command.senderUuid(),
 				command.messageType().trim(),
@@ -65,5 +70,14 @@ public class SaveChatMessageService implements SaveChatMessageUseCase {
 				command.files(),
 				now
 		));
+		chatMessageCreatedEventPort.publish(new ChatMessageCreatedEventPort.Event(
+				UUID.randomUUID().toString(),
+				saved.getChatRoomUuid(),
+				saved.getMessageUuid(),
+				saved.getSenderUuid(),
+				saved.getContent(),
+				saved.getCreatedAt()
+		));
+		return saved;
 	}
 }

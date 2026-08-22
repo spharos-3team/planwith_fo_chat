@@ -20,6 +20,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.planwith.planwith_fo_chat.application.port.in.ApplyMeetingCreatedUseCase;
 import com.planwith.planwith_fo_chat.application.port.out.ChatMemberRepositoryPort;
+import com.planwith.planwith_fo_chat.application.port.out.ChatRoomMemberReadRepositoryPort;
 import com.planwith.planwith_fo_chat.application.port.out.ChatRoomRepositoryPort;
 import com.planwith.planwith_fo_chat.application.port.out.ProcessedChatEventPort;
 import com.planwith.planwith_fo_chat.domain.chat.ChatMember;
@@ -35,6 +36,9 @@ class ApplyMeetingCreatedServiceTest {
 	private ChatMemberRepositoryPort chatMemberRepositoryPort;
 
 	@Mock
+	private ChatRoomMemberReadRepositoryPort chatRoomMemberReadRepositoryPort;
+
+	@Mock
 	private ProcessedChatEventPort processedChatEventPort;
 
 	private ApplyMeetingCreatedService service;
@@ -44,6 +48,7 @@ class ApplyMeetingCreatedServiceTest {
 		service = new ApplyMeetingCreatedService(
 				chatRoomRepositoryPort,
 				chatMemberRepositoryPort,
+				chatRoomMemberReadRepositoryPort,
 				processedChatEventPort
 		);
 	}
@@ -69,6 +74,9 @@ class ApplyMeetingCreatedServiceTest {
 		when(chatMemberRepositoryPort.findByChatRoomIdAndMemberUuid(10L, hostUuid)).thenReturn(Optional.empty());
 		when(chatMemberRepositoryPort.save(any(ChatMember.class)))
 				.thenAnswer(invocation -> invocation.getArgument(0));
+		when(chatRoomMemberReadRepositoryPort.findByMemberUuidAndChatRoomUuid(hostUuid, persisted.getChatRoomUuid()))
+				.thenReturn(Optional.empty());
+		when(chatRoomMemberReadRepositoryPort.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
 		ChatRoom result = service.apply(new ApplyMeetingCreatedUseCase.Command(
 				"e1",

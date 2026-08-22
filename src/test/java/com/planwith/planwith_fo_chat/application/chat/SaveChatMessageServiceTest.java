@@ -21,6 +21,7 @@ import com.planwith.planwith_fo_chat.application.exception.BusinessException;
 import com.planwith.planwith_fo_chat.application.exception.ErrorCode;
 import com.planwith.planwith_fo_chat.application.port.in.SaveChatMessageUseCase;
 import com.planwith.planwith_fo_chat.application.port.out.ChatMemberRepositoryPort;
+import com.planwith.planwith_fo_chat.application.port.out.ChatMessageCreatedEventPort;
 import com.planwith.planwith_fo_chat.application.port.out.ChatMessageRepositoryPort;
 import com.planwith.planwith_fo_chat.application.port.out.ChatRoomRepositoryPort;
 import com.planwith.planwith_fo_chat.domain.chat.ChatMember;
@@ -41,6 +42,9 @@ class SaveChatMessageServiceTest {
 	@Mock
 	private ChatMessageRepositoryPort chatMessageRepositoryPort;
 
+	@Mock
+	private ChatMessageCreatedEventPort chatMessageCreatedEventPort;
+
 	private SaveChatMessageService service;
 
 	@BeforeEach
@@ -48,7 +52,8 @@ class SaveChatMessageServiceTest {
 		service = new SaveChatMessageService(
 				chatRoomRepositoryPort,
 				chatMemberRepositoryPort,
-				chatMessageRepositoryPort
+				chatMessageRepositoryPort,
+				chatMessageCreatedEventPort
 		);
 	}
 
@@ -75,6 +80,7 @@ class SaveChatMessageServiceTest {
 		assertThat(saved.getContent()).isEqualTo("내일 2시에 만나요");
 		assertThat(saved.isDeleted()).isFalse();
 		verify(chatMessageRepositoryPort).save(any(ChatMessage.class));
+		verify(chatMessageCreatedEventPort).publish(any());
 	}
 
 	@Test

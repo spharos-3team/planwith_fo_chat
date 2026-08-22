@@ -8,6 +8,7 @@ public record ChatKafkaProperties(
 		boolean consumerEnabled,
 		String createdTopic,
 		String completedTopic,
-		String participationChangedTopic
+		String participationChangedTopic,
+		String messageCreatedTopic
 ) {
 }

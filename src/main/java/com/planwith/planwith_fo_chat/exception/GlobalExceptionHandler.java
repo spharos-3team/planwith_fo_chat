@@ -9,6 +9,8 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import com.planwith.planwith_fo_chat.adapter.in.web.dto.ApiResponse;
+import com.planwith.planwith_fo_chat.application.exception.BusinessException;
 import com.planwith.planwith_fo_chat.dto.ApiErrorResponse;
 
 @RestControllerAdvice
@@ -17,6 +19,13 @@ public class GlobalExceptionHandler {
 	@ExceptionHandler(InvalidCredentialsException.class)
 	public ResponseEntity<ApiErrorResponse> handleInvalidCredentials(InvalidCredentialsException exception) {
 		return createErrorResponse(HttpStatus.UNAUTHORIZED, "INVALID_CREDENTIALS", exception.getMessage());
+	}
+
+	@ExceptionHandler(BusinessException.class)
+	public ResponseEntity<ApiResponse<Void>> handleBusinessException(BusinessException exception) {
+		return ResponseEntity.status(exception.getErrorCode().status()).body(
+				ApiResponse.failure(exception.getErrorCode().code(), exception.getMessage(), java.util.Map.of())
+		);
 	}
 
 	@ExceptionHandler(MethodArgumentNotValidException.class)

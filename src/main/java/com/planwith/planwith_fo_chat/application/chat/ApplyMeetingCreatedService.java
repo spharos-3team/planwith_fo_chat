@@ -13,10 +13,12 @@ import org.springframework.util.StringUtils;
 
 import com.planwith.planwith_fo_chat.application.port.in.ApplyMeetingCreatedUseCase;
 import com.planwith.planwith_fo_chat.application.port.out.ChatMemberRepositoryPort;
+import com.planwith.planwith_fo_chat.application.port.out.ChatRoomMemberReadRepositoryPort;
 import com.planwith.planwith_fo_chat.application.port.out.ChatRoomRepositoryPort;
 import com.planwith.planwith_fo_chat.application.port.out.ProcessedChatEventPort;
 import com.planwith.planwith_fo_chat.domain.chat.ChatMember;
 import com.planwith.planwith_fo_chat.domain.chat.ChatRoom;
+import com.planwith.planwith_fo_chat.domain.chat.ChatRoomMemberRead;
 
 @Service
 @Transactional
@@ -28,15 +30,18 @@ public class ApplyMeetingCreatedService implements ApplyMeetingCreatedUseCase {
 
 	private final ChatRoomRepositoryPort chatRoomRepositoryPort;
 	private final ChatMemberRepositoryPort chatMemberRepositoryPort;
+	private final ChatRoomMemberReadRepositoryPort chatRoomMemberReadRepositoryPort;
 	private final ProcessedChatEventPort processedChatEventPort;
 
 	public ApplyMeetingCreatedService(
 			ChatRoomRepositoryPort chatRoomRepositoryPort,
 			ChatMemberRepositoryPort chatMemberRepositoryPort,
+			ChatRoomMemberReadRepositoryPort chatRoomMemberReadRepositoryPort,
 			ProcessedChatEventPort processedChatEventPort
 	) {
 		this.chatRoomRepositoryPort = chatRoomRepositoryPort;
 		this.chatMemberRepositoryPort = chatMemberRepositoryPort;
+		this.chatRoomMemberReadRepositoryPort = chatRoomMemberReadRepositoryPort;
 		this.processedChatEventPort = processedChatEventPort;
 	}
 
@@ -88,6 +93,14 @@ public class ApplyMeetingCreatedService implements ApplyMeetingCreatedUseCase {
 	private void ensureHost(ChatRoom room, UUID hostMemberUuid, Instant now) {
 		chatMemberRepositoryPort.findByChatRoomIdAndMemberUuid(room.getChatRoomId(), hostMemberUuid)
 				.orElseGet(() -> chatMemberRepositoryPort.save(ChatMember.host(room.getChatRoomId(), hostMemberUuid, now)));
+		ensureReadRow(room, hostMemberUuid, now);
+	}
+
+	private void ensureReadRow(ChatRoom room, UUID memberUuid, Instant now) {
+		chatRoomMemberReadRepositoryPort.findByMemberUuidAndChatRoomUuid(memberUuid, room.getChatRoomUuid())
+				.orElseGet(() -> chatRoomMemberReadRepositoryPort.save(
+						ChatRoomMemberRead.empty(memberUuid, room.getChatRoomUuid(), room.getRoomName(), now)
+				));
 	}
 
 	private void markProcessed(String eventId, UUID meetingUuid, Instant now) {
