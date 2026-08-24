@@ -50,12 +50,11 @@ public class ListChatRoomsService implements ListChatRoomsUseCase {
 		boolean hasNext = rows.size() > size;
 		List<ChatRoomMemberRead> page = hasNext ? rows.subList(0, size) : rows;
 		List<Item> items = page.stream()
-				.map(read -> new Item(
-						read,
-						chatRoomRepositoryPort.findByChatRoomUuid(read.getChatRoomUuid())
-								.map(ChatRoom::getStatus)
-								.orElseThrow(() -> new BusinessException(ErrorCode.CHAT_ROOM_NOT_FOUND))
-				))
+				.map(read -> {
+					ChatRoom room = chatRoomRepositoryPort.findByChatRoomUuid(read.getChatRoomUuid())
+							.orElseThrow(() -> new BusinessException(ErrorCode.CHAT_ROOM_NOT_FOUND));
+					return new Item(read, room.getStatus(), room.getMeetingUuid());
+				})
 				.toList();
 		Instant nextCursorAt = null;
 		UUID nextCursorChatRoomUuid = null;

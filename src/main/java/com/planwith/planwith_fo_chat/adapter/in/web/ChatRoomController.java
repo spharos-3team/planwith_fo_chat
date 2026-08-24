@@ -15,10 +15,12 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.planwith.planwith_fo_chat.adapter.in.web.auth.GatewayAuthenticationContextResolver;
 import com.planwith.planwith_fo_chat.adapter.in.web.dto.ApiResponse;
+import com.planwith.planwith_fo_chat.adapter.in.web.dto.ChatRoomByMeetingResponse;
 import com.planwith.planwith_fo_chat.adapter.in.web.dto.ChatRoomListItemResponse;
 import com.planwith.planwith_fo_chat.adapter.in.web.dto.ChatRoomListResponse;
 import com.planwith.planwith_fo_chat.adapter.in.web.dto.ChatRoomReadResponse;
 import com.planwith.planwith_fo_chat.adapter.in.web.dto.MarkChatRoomReadRequest;
+import com.planwith.planwith_fo_chat.application.port.in.GetChatRoomByMeetingUseCase;
 import com.planwith.planwith_fo_chat.application.port.in.ListChatRoomsUseCase;
 import com.planwith.planwith_fo_chat.application.port.in.MarkChatRoomReadUseCase;
 import com.planwith.planwith_fo_chat.domain.chat.ChatRoomMemberRead;
@@ -29,20 +31,23 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 @Validated
 @RestController
 @RequestMapping("/api/v1/chat-rooms")
-@Tag(name = "chat-rooms", description = "채팅방 목록·읽음")
+@Tag(name = "chat-rooms", description = "채팅방 목록·읽음·모임 조회")
 public class ChatRoomController {
 
 	private final GatewayAuthenticationContextResolver authContextResolver;
 	private final ListChatRoomsUseCase listChatRoomsUseCase;
+	private final GetChatRoomByMeetingUseCase getChatRoomByMeetingUseCase;
 	private final MarkChatRoomReadUseCase markChatRoomReadUseCase;
 
 	public ChatRoomController(
 			GatewayAuthenticationContextResolver authContextResolver,
 			ListChatRoomsUseCase listChatRoomsUseCase,
+			GetChatRoomByMeetingUseCase getChatRoomByMeetingUseCase,
 			MarkChatRoomReadUseCase markChatRoomReadUseCase
 	) {
 		this.authContextResolver = authContextResolver;
 		this.listChatRoomsUseCase = listChatRoomsUseCase;
+		this.getChatRoomByMeetingUseCase = getChatRoomByMeetingUseCase;
 		this.markChatRoomReadUseCase = markChatRoomReadUseCase;
 	}
 
@@ -64,6 +69,15 @@ public class ChatRoomController {
 				result.items().stream().map(this::toItem).toList(),
 				result.nextCursorAt(),
 				result.nextCursorChatRoomUuid()
+		)));
+	}
+
+	@GetMapping("/by-meeting/{meetingUuid}")
+	@Operation(summary = "모임으로 채팅방 조회", description = "APPROVED 멤버만. DISBANDED는 없는 방처럼 404.")
+	public ResponseEntity<ApiResponse<ChatRoomByMeetingResponse>> getByMeeting(@PathVariable UUID meetingUuid) {
+		UUID memberUuid = authContextResolver.requireUser().userId();
+		return ResponseEntity.ok(ApiResponse.success(ChatRoomByMeetingResponse.from(
+				getChatRoomByMeetingUseCase.get(new GetChatRoomByMeetingUseCase.Command(meetingUuid, memberUuid))
 		)));
 	}
 
@@ -101,6 +115,7 @@ public class ChatRoomController {
 				);
 		return new ChatRoomListItemResponse(
 				read.getChatRoomUuid(),
+				item.meetingUuid(),
 				read.getRoomName(),
 				item.roomStatus(),
 				lastMessage,
