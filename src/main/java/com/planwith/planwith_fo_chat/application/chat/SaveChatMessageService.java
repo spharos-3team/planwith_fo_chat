@@ -52,6 +52,9 @@ public class SaveChatMessageService implements SaveChatMessageUseCase {
 		}
 		ChatRoom room = chatRoomRepositoryPort.findByChatRoomUuid(command.chatRoomUuid())
 				.orElseThrow(() -> new BusinessException(ErrorCode.CHAT_ROOM_NOT_FOUND));
+		if (room.isHidden()) {
+			throw new BusinessException(ErrorCode.CHAT_ROOM_NOT_FOUND);
+		}
 		if (room.isEnded()) {
 			throw new BusinessException(ErrorCode.CHAT_ROOM_ENDED);
 		}

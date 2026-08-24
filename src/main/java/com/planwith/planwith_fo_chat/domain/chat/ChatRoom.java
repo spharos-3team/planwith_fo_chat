@@ -44,7 +44,7 @@ public class ChatRoom {
 	}
 
 	public ChatRoom end(Instant now) {
-		if (status == ChatRoomStatus.ENDED) {
+		if (status == ChatRoomStatus.ENDED || status == ChatRoomStatus.DISBANDED) {
 			return this;
 		}
 		return new ChatRoom(
@@ -58,8 +58,27 @@ public class ChatRoom {
 		);
 	}
 
+	public ChatRoom hide(Instant now) {
+		if (status == ChatRoomStatus.DISBANDED) {
+			return this;
+		}
+		return new ChatRoom(
+				chatRoomId,
+				chatRoomUuid,
+				meetingUuid,
+				roomName,
+				ChatRoomStatus.DISBANDED,
+				createdAt,
+				now
+		);
+	}
+
 	public boolean isEnded() {
 		return status == ChatRoomStatus.ENDED;
+	}
+
+	public boolean isHidden() {
+		return status == ChatRoomStatus.DISBANDED;
 	}
 
 	public Long getChatRoomId() {

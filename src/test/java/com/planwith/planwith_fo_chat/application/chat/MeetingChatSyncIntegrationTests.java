@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.planwith.planwith_fo_chat.application.exception.ChatRoomNotReadyException;
 import com.planwith.planwith_fo_chat.application.port.in.ApplyMeetingCompletedUseCase;
 import com.planwith.planwith_fo_chat.application.port.in.ApplyMeetingCreatedUseCase;
+import com.planwith.planwith_fo_chat.application.port.in.ApplyMeetingDisbandedUseCase;
 import com.planwith.planwith_fo_chat.application.port.in.ApplyMeetingParticipationChangedUseCase;
 import com.planwith.planwith_fo_chat.application.port.out.ChatMemberRepositoryPort;
 import com.planwith.planwith_fo_chat.application.port.out.ChatRoomRepositoryPort;
@@ -33,6 +34,9 @@ class MeetingChatSyncIntegrationTests {
 
 	@Autowired
 	private ApplyMeetingCompletedUseCase applyMeetingCompletedUseCase;
+
+	@Autowired
+	private ApplyMeetingDisbandedUseCase applyMeetingDisbandedUseCase;
 
 	@Autowired
 	private ApplyMeetingParticipationChangedUseCase applyMeetingParticipationChangedUseCase;
@@ -122,5 +126,34 @@ class MeetingChatSyncIntegrationTests {
 		assertThatThrownBy(() -> applyMeetingCompletedUseCase.apply(
 				new ApplyMeetingCompletedUseCase.Command("done-missing", UUID.randomUUID(), Instant.now())
 		)).isInstanceOf(ChatRoomNotReadyException.class);
+	}
+
+	@Test
+	void disbandedHidesRoomAndKeepsRows() {
+		UUID meetingUuid = UUID.randomUUID();
+		UUID hostUuid = UUID.randomUUID();
+		Instant now = Instant.parse("2026-08-24T00:20:00Z");
+		ChatRoom room = applyMeetingCreatedUseCase.apply(new ApplyMeetingCreatedUseCase.Command(
+				"created-disband",
+				meetingUuid,
+				hostUuid,
+				"해체 여행",
+				now
+		));
+		ChatRoom hidden = applyMeetingDisbandedUseCase.apply(new ApplyMeetingDisbandedUseCase.Command(
+				"disband-1",
+				meetingUuid,
+				now.plusSeconds(30)
+		));
+		ChatRoom duplicate = applyMeetingDisbandedUseCase.apply(new ApplyMeetingDisbandedUseCase.Command(
+				"disband-1",
+				meetingUuid,
+				now.plusSeconds(60)
+		));
+
+		assertThat(hidden.getStatus()).isEqualTo(ChatRoomStatus.DISBANDED);
+		assertThat(duplicate.getChatRoomId()).isEqualTo(hidden.getChatRoomId());
+		assertThat(chatRoomRepositoryPort.findByMeetingUuid(meetingUuid)).isPresent();
+		assertThat(chatMemberRepositoryPort.findByChatRoomIdAndMemberUuid(room.getChatRoomId(), hostUuid)).isPresent();
 	}
 }

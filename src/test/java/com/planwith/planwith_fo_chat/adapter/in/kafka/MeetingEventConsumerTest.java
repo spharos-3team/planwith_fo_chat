@@ -15,6 +15,7 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.planwith.planwith_fo_chat.application.exception.ChatRoomNotReadyException;
 import com.planwith.planwith_fo_chat.application.port.in.ApplyMeetingCompletedUseCase;
 import com.planwith.planwith_fo_chat.application.port.in.ApplyMeetingCreatedUseCase;
+import com.planwith.planwith_fo_chat.application.port.in.ApplyMeetingDisbandedUseCase;
 import com.planwith.planwith_fo_chat.application.port.in.ApplyMeetingParticipationChangedUseCase;
 import com.planwith.planwith_fo_chat.domain.chat.ChatMember;
 import com.planwith.planwith_fo_chat.domain.chat.ChatRoom;
@@ -30,6 +31,7 @@ class MeetingEventConsumerTest {
 		CapturingCreated created = new CapturingCreated();
 		MeetingEventConsumer consumer = new MeetingEventConsumer(
 				created,
+				command -> null,
 				command -> null,
 				command -> null,
 				objectMapper
@@ -65,6 +67,7 @@ class MeetingEventConsumerTest {
 				created,
 				command -> null,
 				command -> null,
+				command -> null,
 				objectMapper
 		);
 
@@ -80,6 +83,7 @@ class MeetingEventConsumerTest {
 				command -> {
 					throw new ChatRoomNotReadyException(command.meetingUuid());
 				},
+				command -> null,
 				command -> null,
 				objectMapper
 		);
@@ -98,7 +102,46 @@ class MeetingEventConsumerTest {
 				.isInstanceOf(ChatRoomNotReadyException.class);
 	}
 
+	@Test
+	void disbandedEnvelopeMapsToUseCase() {
+		CapturingDisbanded disbanded = new CapturingDisbanded();
+		MeetingEventConsumer consumer = new MeetingEventConsumer(
+				command -> null,
+				command -> null,
+				disbanded,
+				command -> null,
+				objectMapper
+		);
+		UUID meetingUuid = UUID.randomUUID();
+
+		consumer.consumeDisbanded("planwith.meeting.disbanded", """
+				{
+				  "eventId":"d1",
+				  "eventType":"meeting.disbanded",
+				  "occurredAt":"2026-08-24T00:20:00Z",
+				  "aggregateId":"%s",
+				  "version":1,
+				  "payload":{"meetingUuid":"%s"}
+				}
+				""".formatted(meetingUuid, meetingUuid));
+
+		assertThat(disbanded.commands).hasSize(1);
+		assertThat(disbanded.commands.get(0).meetingUuid()).isEqualTo(meetingUuid);
+		assertThat(disbanded.commands.get(0).eventId()).isEqualTo("d1");
+	}
+
 	private static final class CapturingCreated implements ApplyMeetingCreatedUseCase {
+
+		private final List<Command> commands = new ArrayList<>();
+
+		@Override
+		public ChatRoom apply(Command command) {
+			commands.add(command);
+			return null;
+		}
+	}
+
+	private static final class CapturingDisbanded implements ApplyMeetingDisbandedUseCase {
 
 		private final List<Command> commands = new ArrayList<>();
 

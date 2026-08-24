@@ -86,6 +86,7 @@ app:
     consumer-enabled: ${CHAT_KAFKA_CONSUMER_ENABLED:${CHAT_KAFKA_ENABLED:false}}
     created-topic: ${MEETING_TOPIC_CREATED:planwith.meeting.created}
     completed-topic: ${MEETING_TOPIC_COMPLETED:planwith.meeting.completed}
+    disbanded-topic: ${MEETING_TOPIC_DISBANDED:planwith.meeting.disbanded}
     participation-changed-topic: ${MEETING_TOPIC_PARTICIPATION_CHANGED:planwith.meeting.participation.changed}
     message-created-topic: ${CHAT_TOPIC_MESSAGE_CREATED:planwith.chat.message.created}
   redis:
