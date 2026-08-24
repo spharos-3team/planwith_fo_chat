@@ -28,7 +28,8 @@ public interface ListChatRoomsUseCase {
 
 	record Item(
 			ChatRoomMemberRead read,
-			ChatRoomStatus roomStatus
+			ChatRoomStatus roomStatus,
+			UUID meetingUuid
 	) {
 	}
 }

@@ -83,6 +83,7 @@ class ChatRoomApiIntegrationTests {
 				.andExpect(jsonPath("$.success").value(true))
 				.andExpect(jsonPath("$.data.content.length()").value(1))
 				.andExpect(jsonPath("$.data.content[0].chatRoomUuid").value(second.getChatRoomUuid().toString()))
+				.andExpect(jsonPath("$.data.content[0].meetingUuid").value(second.getMeetingUuid().toString()))
 				.andExpect(jsonPath("$.data.nextCursorChatRoomUuid").isNotEmpty());
 
 		saveChatMessageUseCase.save(new SaveChatMessageUseCase.Command(
@@ -163,6 +164,47 @@ class ChatRoomApiIntegrationTests {
 		mockMvc.perform(post("/api/v1/chat-rooms/" + room.getChatRoomUuid() + "/read")
 						.header("X-Auth-User-Id", hostUuid)
 						.contentType(MediaType.APPLICATION_JSON))
+				.andExpect(status().isNotFound());
+
+		mockMvc.perform(get("/api/v1/chat-rooms/by-meeting/" + room.getMeetingUuid())
+						.header("X-Auth-User-Id", hostUuid))
+				.andExpect(status().isNotFound());
+	}
+
+	@Test
+	void findsApprovedRoomByMeetingUuid() throws Exception {
+		UUID hostUuid = UUID.randomUUID();
+		UUID pendingUuid = UUID.randomUUID();
+		Instant now = Instant.parse("2026-08-24T07:30:00Z");
+		ChatRoom room = applyMeetingCreatedUseCase.apply(new ApplyMeetingCreatedUseCase.Command(
+				"by-meeting-created",
+				UUID.randomUUID(),
+				hostUuid,
+				"부산 동행",
+				now
+		));
+		applyMeetingParticipationChangedUseCase.apply(new ApplyMeetingParticipationChangedUseCase.Command(
+				"by-meeting-pending",
+				room.getMeetingUuid(),
+				pendingUuid,
+				"PENDING",
+				now.plusSeconds(5)
+		));
+
+		mockMvc.perform(get("/api/v1/chat-rooms/by-meeting/" + room.getMeetingUuid())
+						.header("X-Auth-User-Id", hostUuid))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.data.chatRoomUuid").value(room.getChatRoomUuid().toString()))
+				.andExpect(jsonPath("$.data.meetingUuid").value(room.getMeetingUuid().toString()))
+				.andExpect(jsonPath("$.data.roomName").value("부산 동행"))
+				.andExpect(jsonPath("$.data.roomStatus").value("ACTIVE"));
+
+		mockMvc.perform(get("/api/v1/chat-rooms/by-meeting/" + room.getMeetingUuid())
+						.header("X-Auth-User-Id", pendingUuid))
+				.andExpect(status().isForbidden());
+
+		mockMvc.perform(get("/api/v1/chat-rooms/by-meeting/" + UUID.randomUUID())
+						.header("X-Auth-User-Id", hostUuid))
 				.andExpect(status().isNotFound());
 	}
 }

@@ -7,6 +7,7 @@ import com.planwith.planwith_fo_chat.domain.chat.ChatRoomStatus;
 
 public record ChatRoomListItemResponse(
 		UUID chatRoomUuid,
+		UUID meetingUuid,
 		String roomName,
 		ChatRoomStatus roomStatus,
 		LastMessageResponse lastMessage,
