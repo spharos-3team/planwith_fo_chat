@@ -23,7 +23,10 @@ import com.planwith.planwith_fo_chat.application.port.in.ApplyMeetingCreatedUseC
 import com.planwith.planwith_fo_chat.application.port.in.ApplyMeetingDisbandedUseCase;
 import com.planwith.planwith_fo_chat.application.port.in.ApplyMeetingParticipationChangedUseCase;
 import com.planwith.planwith_fo_chat.application.port.in.SaveChatMessageUseCase;
+import com.planwith.planwith_fo_chat.domain.chat.ChatFile;
+import com.planwith.planwith_fo_chat.domain.chat.ChatMessage;
 import com.planwith.planwith_fo_chat.domain.chat.ChatRoom;
+import com.planwith.planwith_fo_chat.domain.chat.FileType;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -204,6 +207,67 @@ class ChatRoomApiIntegrationTests {
 				.andExpect(status().isForbidden());
 
 		mockMvc.perform(get("/api/v1/chat-rooms/by-meeting/" + UUID.randomUUID())
+						.header("X-Auth-User-Id", hostUuid))
+				.andExpect(status().isNotFound());
+	}
+
+	@Test
+	void listsMessagesNewestFirstWithBeforeCursor() throws Exception {
+		UUID hostUuid = UUID.randomUUID();
+		UUID pendingUuid = UUID.randomUUID();
+		Instant now = Instant.parse("2026-08-24T07:50:00Z");
+		ChatRoom room = applyMeetingCreatedUseCase.apply(new ApplyMeetingCreatedUseCase.Command(
+				"msg-list-created",
+				UUID.randomUUID(),
+				hostUuid,
+				"메시지 목록",
+				now
+		));
+		applyMeetingParticipationChangedUseCase.apply(new ApplyMeetingParticipationChangedUseCase.Command(
+				"msg-list-pending",
+				room.getMeetingUuid(),
+				pendingUuid,
+				"PENDING",
+				now.plusSeconds(1)
+		));
+		ChatMessage older = saveChatMessageUseCase.save(new SaveChatMessageUseCase.Command(
+				room.getChatRoomUuid(),
+				hostUuid,
+				"TEXT",
+				"먼저",
+				List.of(),
+				now.plusSeconds(10)
+		));
+		ChatMessage newer = saveChatMessageUseCase.save(new SaveChatMessageUseCase.Command(
+				room.getChatRoomUuid(),
+				hostUuid,
+				"FILE",
+				null,
+				List.of(new ChatFile(FileType.IMAGE, "https://example.com/a.png", "a.png")),
+				now.plusSeconds(20)
+		));
+
+		mockMvc.perform(get("/api/v1/chat-rooms/" + room.getChatRoomUuid() + "/messages")
+						.header("X-Auth-User-Id", hostUuid)
+						.param("size", "1"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.data.content.length()").value(1))
+				.andExpect(jsonPath("$.data.content[0].messageUuid").value(newer.getMessageUuid().toString()))
+				.andExpect(jsonPath("$.data.content[0].files[0].fileType").value("IMAGE"))
+				.andExpect(jsonPath("$.data.nextBefore").value(newer.getCreatedAt().toString()));
+
+		mockMvc.perform(get("/api/v1/chat-rooms/" + room.getChatRoomUuid() + "/messages")
+						.header("X-Auth-User-Id", hostUuid)
+						.param("before", newer.getCreatedAt().toString()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.data.content.length()").value(1))
+				.andExpect(jsonPath("$.data.content[0].messageUuid").value(older.getMessageUuid().toString()));
+
+		mockMvc.perform(get("/api/v1/chat-rooms/" + room.getChatRoomUuid() + "/messages")
+						.header("X-Auth-User-Id", pendingUuid))
+				.andExpect(status().isForbidden());
+
+		mockMvc.perform(get("/api/v1/chat-rooms/" + UUID.randomUUID() + "/messages")
 						.header("X-Auth-User-Id", hostUuid))
 				.andExpect(status().isNotFound());
 	}
