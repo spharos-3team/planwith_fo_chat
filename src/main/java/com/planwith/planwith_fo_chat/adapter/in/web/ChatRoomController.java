@@ -1,6 +1,7 @@
 package com.planwith.planwith_fo_chat.adapter.in.web;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 import org.springframework.http.ResponseEntity;
@@ -15,14 +16,18 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.planwith.planwith_fo_chat.adapter.in.web.auth.GatewayAuthenticationContextResolver;
 import com.planwith.planwith_fo_chat.adapter.in.web.dto.ApiResponse;
+import com.planwith.planwith_fo_chat.adapter.in.web.dto.ChatMessageListResponse;
+import com.planwith.planwith_fo_chat.adapter.in.web.dto.ChatMessageResponse;
 import com.planwith.planwith_fo_chat.adapter.in.web.dto.ChatRoomByMeetingResponse;
 import com.planwith.planwith_fo_chat.adapter.in.web.dto.ChatRoomListItemResponse;
 import com.planwith.planwith_fo_chat.adapter.in.web.dto.ChatRoomListResponse;
 import com.planwith.planwith_fo_chat.adapter.in.web.dto.ChatRoomReadResponse;
 import com.planwith.planwith_fo_chat.adapter.in.web.dto.MarkChatRoomReadRequest;
 import com.planwith.planwith_fo_chat.application.port.in.GetChatRoomByMeetingUseCase;
+import com.planwith.planwith_fo_chat.application.port.in.ListChatMessagesUseCase;
 import com.planwith.planwith_fo_chat.application.port.in.ListChatRoomsUseCase;
 import com.planwith.planwith_fo_chat.application.port.in.MarkChatRoomReadUseCase;
+import com.planwith.planwith_fo_chat.domain.chat.ChatMessage;
 import com.planwith.planwith_fo_chat.domain.chat.ChatRoomMemberRead;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -31,23 +36,26 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 @Validated
 @RestController
 @RequestMapping("/api/v1/chat-rooms")
-@Tag(name = "chat-rooms", description = "채팅방 목록·읽음·모임 조회")
+@Tag(name = "chat-rooms", description = "채팅방 목록·읽음·모임 조회·메시지")
 public class ChatRoomController {
 
 	private final GatewayAuthenticationContextResolver authContextResolver;
 	private final ListChatRoomsUseCase listChatRoomsUseCase;
 	private final GetChatRoomByMeetingUseCase getChatRoomByMeetingUseCase;
+	private final ListChatMessagesUseCase listChatMessagesUseCase;
 	private final MarkChatRoomReadUseCase markChatRoomReadUseCase;
 
 	public ChatRoomController(
 			GatewayAuthenticationContextResolver authContextResolver,
 			ListChatRoomsUseCase listChatRoomsUseCase,
 			GetChatRoomByMeetingUseCase getChatRoomByMeetingUseCase,
+			ListChatMessagesUseCase listChatMessagesUseCase,
 			MarkChatRoomReadUseCase markChatRoomReadUseCase
 	) {
 		this.authContextResolver = authContextResolver;
 		this.listChatRoomsUseCase = listChatRoomsUseCase;
 		this.getChatRoomByMeetingUseCase = getChatRoomByMeetingUseCase;
+		this.listChatMessagesUseCase = listChatMessagesUseCase;
 		this.markChatRoomReadUseCase = markChatRoomReadUseCase;
 	}
 
@@ -78,6 +86,30 @@ public class ChatRoomController {
 		UUID memberUuid = authContextResolver.requireUser().userId();
 		return ResponseEntity.ok(ApiResponse.success(ChatRoomByMeetingResponse.from(
 				getChatRoomByMeetingUseCase.get(new GetChatRoomByMeetingUseCase.Command(meetingUuid, memberUuid))
+		)));
+	}
+
+	@GetMapping("/{chatRoomUuid}/messages")
+	@Operation(summary = "채팅 메시지 목록", description = "createdAt 역순. before로 이전 페이지. ENDED는 조회 가능, DISBANDED는 404.")
+	public ResponseEntity<ApiResponse<ChatMessageListResponse>> listMessages(
+			@PathVariable UUID chatRoomUuid,
+			@RequestParam(required = false) Instant before,
+			@RequestParam(defaultValue = "20") int size
+	) {
+		UUID memberUuid = authContextResolver.requireUser().userId();
+		int requestedSize = size <= 0 ? 20 : Math.min(size, 50);
+		List<ChatMessage> messages = listChatMessagesUseCase.list(new ListChatMessagesUseCase.Command(
+				chatRoomUuid,
+				memberUuid,
+				before,
+				requestedSize
+		));
+		Instant nextBefore = messages.size() == requestedSize
+				? messages.get(messages.size() - 1).getCreatedAt()
+				: null;
+		return ResponseEntity.ok(ApiResponse.success(new ChatMessageListResponse(
+				messages.stream().map(ChatMessageResponse::from).toList(),
+				nextBefore
 		)));
 	}
 

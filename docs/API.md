@@ -6,7 +6,7 @@
 > 공통 응답: `ApiResponse<T>`  
 > 호출 경로: `Frontend → Gateway(:8000) → Chat(:8088)` (Access 검증은 Gateway. Chat은 JWT를 검증하지 않는다)
 
-최종 갱신: 2026-08-24 (#12 모임 UUID로 채팅방 조회)
+최종 갱신: 2026-08-24 (#13 채팅 메시지 히스토리 REST)
 
 ---
 
@@ -37,7 +37,8 @@ OpenFeign 금지. 신원은 Gateway `X-Auth-User-Id`. Refresh Token을 JSON/URL/
 | ✅ | #4 | WebSocket STOMP + Redis Pub/Sub |
 | ✅ | #5 | Read Model + 목록·읽음 API |
 | ✅ | #6 | 모임 해체 시 목록/입장 숨김, DB row 유지 |
-| ✅ 구현 | #12 | 모임 UUID로 채팅방 조회 + 목록 `meetingUuid` |
+| ✅ | #12 | 모임 UUID로 채팅방 조회 + 목록 `meetingUuid` |
+| ✅ 구현 | #13 | 채팅 메시지 히스토리 REST |
 
 ---
 
@@ -114,13 +115,14 @@ Key = `meetingUuid` (메시지 이벤트는 `chatRoomUuid`).
 | --- | --- | --- | --- |
 | #5 | GET | `/api/v1/chat-rooms` | 내 채팅방 목록. cursor `cursorAt` + `cursorChatRoomUuid`, `size` 기본 20 최대 50 |
 | #12 | GET | `/api/v1/chat-rooms/by-meeting/{meetingUuid}` | 모임 상세 입장용. APPROVED만. DISBANDED/없으면 `CHAT_ROOM_NOT_FOUND` |
+| #13 | GET | `/api/v1/chat-rooms/{chatRoomUuid}/messages` | Mongo 히스토리. `before`+`size`(기본 20 최대 50). 역순. ENDED 조회 가능 |
 | #5 | POST | `/api/v1/chat-rooms/{chatRoomUuid}/read` | 읽음. body `lastReadMessageUuid` 선택. `unreadCount=0` |
 | #4 | WS | `/api/v1/chat/ws` | STOMP. 아래 WebSocket |
 
 목록 응답 항목: `chatRoomUuid`, `meetingUuid`, `roomName`, `roomStatus`, `lastMessage`, `unreadCount`.  
 `ENDED`는 목록에 남을 수 있다. `DISBANDED`는 목록·읽음에서 빠지고 `CHAT_ROOM_NOT_FOUND`.
 
-메시지 HTTP 목록 API는 유스케이스만 있고 Controller 없음 (#3 저장·조회 포트만).
+메시지 목록 응답: `content[]` (`messageUuid`, `chatRoomUuid`, `senderUuid`, `messageType`, `content`, `files`, `modified`, `deleted`, `createdAt`, `updatedAt`) + `nextBefore`.
 
 ---
 
@@ -174,6 +176,5 @@ Key = `meetingUuid` (메시지 이벤트는 `chatRoomUuid`).
 
 - Gateway `planwith-fo-chat` 라우트 (`gateway.route.snippet.yml` 경로가 템플릿 `/api/planwith-fo-chat/**` 이라 실제 `/api/v1/chat-rooms`, `/api/v1/chat/ws` 와 안 맞음)
 - 프론트 채팅 UI
-- 메시지 목록 REST
 - 인프라 compose에 Mongo/Kafka/Redis (서버는 아직 MySQL만)
 - 해체 물리삭제 (하지 않음. #6은 숨김)
