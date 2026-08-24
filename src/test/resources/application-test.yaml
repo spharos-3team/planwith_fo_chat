@@ -54,6 +54,7 @@ app:
     consumer-enabled: false
     created-topic: planwith.meeting.created
     completed-topic: planwith.meeting.completed
+    disbanded-topic: planwith.meeting.disbanded
     participation-changed-topic: planwith.meeting.participation.changed
     message-created-topic: planwith.chat.message.created
   redis:

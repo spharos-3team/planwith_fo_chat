@@ -33,6 +33,9 @@ public class EnsureChatRoomSubscriberService implements EnsureChatRoomSubscriber
 		Objects.requireNonNull(memberUuid, "memberUuid is required.");
 		ChatRoom room = chatRoomRepositoryPort.findByChatRoomUuid(chatRoomUuid)
 				.orElseThrow(() -> new BusinessException(ErrorCode.CHAT_ROOM_NOT_FOUND));
+		if (room.isHidden()) {
+			throw new BusinessException(ErrorCode.CHAT_ROOM_NOT_FOUND);
+		}
 		ChatMember member = chatMemberRepositoryPort
 				.findByChatRoomIdAndMemberUuid(room.getChatRoomId(), memberUuid)
 				.orElseThrow(() -> new BusinessException(ErrorCode.CHAT_MEMBER_NOT_ALLOWED));

@@ -46,6 +46,9 @@ public class ListChatMessagesService implements ListChatMessagesUseCase {
 		}
 		ChatRoom room = chatRoomRepositoryPort.findByChatRoomUuid(command.chatRoomUuid())
 				.orElseThrow(() -> new BusinessException(ErrorCode.CHAT_ROOM_NOT_FOUND));
+		if (room.isHidden()) {
+			throw new BusinessException(ErrorCode.CHAT_ROOM_NOT_FOUND);
+		}
 		ChatMember member = chatMemberRepositoryPort
 				.findByChatRoomIdAndMemberUuid(room.getChatRoomId(), command.requesterUuid())
 				.orElseThrow(() -> new BusinessException(ErrorCode.CHAT_MEMBER_NOT_ALLOWED));

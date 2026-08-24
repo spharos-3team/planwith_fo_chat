@@ -67,4 +67,18 @@ class EnsureChatRoomSubscriberServiceTest {
 				.extracting(exception -> ((BusinessException) exception).getErrorCode())
 				.isEqualTo(ErrorCode.CHAT_MEMBER_NOT_ALLOWED);
 	}
+
+	@Test
+	void rejectsDisbandedRoomAsNotFound() {
+		UUID roomUuid = UUID.randomUUID();
+		UUID memberUuid = UUID.randomUUID();
+		Instant now = Instant.now();
+		ChatRoom room = new ChatRoom(1L, roomUuid, UUID.randomUUID(), "부산", ChatRoomStatus.DISBANDED, now, now);
+		when(chatRoomRepositoryPort.findByChatRoomUuid(roomUuid)).thenReturn(Optional.of(room));
+
+		assertThatThrownBy(() -> service.ensureCanSubscribe(roomUuid, memberUuid))
+				.isInstanceOf(BusinessException.class)
+				.extracting(exception -> ((BusinessException) exception).getErrorCode())
+				.isEqualTo(ErrorCode.CHAT_ROOM_NOT_FOUND);
+	}
 }

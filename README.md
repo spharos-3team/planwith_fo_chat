@@ -1,5 +1,7 @@
 # planwith_fo_chat
 
+채팅 FO 서비스. API·이벤트·스키마: [docs/API.md](docs/API.md)
+
 서버 노트북 Self-hosted Runner 배포 확인용 Spring Boot 서비스입니다.
 
 | 항목 | 값 |

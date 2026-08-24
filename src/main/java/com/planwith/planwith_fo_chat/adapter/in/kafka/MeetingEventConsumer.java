@@ -19,6 +19,7 @@ import com.planwith.planwith_fo_chat.adapter.in.kafka.dto.MeetingUuidPayload;
 import com.planwith.planwith_fo_chat.application.exception.ChatRoomNotReadyException;
 import com.planwith.planwith_fo_chat.application.port.in.ApplyMeetingCompletedUseCase;
 import com.planwith.planwith_fo_chat.application.port.in.ApplyMeetingCreatedUseCase;
+import com.planwith.planwith_fo_chat.application.port.in.ApplyMeetingDisbandedUseCase;
 import com.planwith.planwith_fo_chat.application.port.in.ApplyMeetingParticipationChangedUseCase;
 
 @Component
@@ -29,17 +30,20 @@ public class MeetingEventConsumer {
 
 	private final ApplyMeetingCreatedUseCase applyMeetingCreatedUseCase;
 	private final ApplyMeetingCompletedUseCase applyMeetingCompletedUseCase;
+	private final ApplyMeetingDisbandedUseCase applyMeetingDisbandedUseCase;
 	private final ApplyMeetingParticipationChangedUseCase applyMeetingParticipationChangedUseCase;
 	private final ObjectMapper objectMapper;
 
 	public MeetingEventConsumer(
 			ApplyMeetingCreatedUseCase applyMeetingCreatedUseCase,
 			ApplyMeetingCompletedUseCase applyMeetingCompletedUseCase,
+			ApplyMeetingDisbandedUseCase applyMeetingDisbandedUseCase,
 			ApplyMeetingParticipationChangedUseCase applyMeetingParticipationChangedUseCase,
 			ObjectMapper objectMapper
 	) {
 		this.applyMeetingCreatedUseCase = applyMeetingCreatedUseCase;
 		this.applyMeetingCompletedUseCase = applyMeetingCompletedUseCase;
+		this.applyMeetingDisbandedUseCase = applyMeetingDisbandedUseCase;
 		this.applyMeetingParticipationChangedUseCase = applyMeetingParticipationChangedUseCase;
 		this.objectMapper = objectMapper;
 	}
@@ -102,6 +106,38 @@ public class MeetingEventConsumer {
 		}
 		catch (RuntimeException exception) {
 			log.error("MeetingEventConsumer : consumeCompleted : retry later - eventId={}", envelope.eventId());
+			throw exception;
+		}
+	}
+
+	@KafkaListener(topics = "${app.kafka.disbanded-topic}")
+	public void consumeDisbanded(
+			@Header(KafkaHeaders.RECEIVED_TOPIC) String topic,
+			@Payload String payload
+	) {
+		EventEnvelope<MeetingUuidPayload> envelope = parse(payload, new TypeReference<>() {
+		});
+		if (envelope == null || envelope.payload() == null) {
+			log.error("MeetingEventConsumer : consumeDisbanded : skip invalid payload - topic={}", topic);
+			return;
+		}
+		try {
+			applyMeetingDisbandedUseCase.apply(new ApplyMeetingDisbandedUseCase.Command(
+					envelope.eventId(),
+					envelope.payload().meetingUuid(),
+					envelope.occurredAt()
+			));
+		}
+		catch (ChatRoomNotReadyException exception) {
+			log.warn("MeetingEventConsumer : consumeDisbanded : room not ready, retry - meetingUuid={}",
+					exception.getMeetingUuid());
+			throw exception;
+		}
+		catch (IllegalArgumentException exception) {
+			log.error("MeetingEventConsumer : consumeDisbanded : skip invalid event - eventId={}", envelope.eventId());
+		}
+		catch (RuntimeException exception) {
+			log.error("MeetingEventConsumer : consumeDisbanded : retry later - eventId={}", envelope.eventId());
 			throw exception;
 		}
 	}

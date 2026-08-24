@@ -19,6 +19,7 @@ public interface ChatRoomMemberReadJpaRepository extends JpaRepository<ChatRoomM
 			  and m.memberUuid = r.memberUuid
 			  and m.chatRoom.chatRoomUuid = r.chatRoomUuid
 			  and m.status = com.planwith.planwith_fo_chat.domain.chat.ChatMemberStatus.APPROVED
+			  and m.chatRoom.status <> com.planwith.planwith_fo_chat.domain.chat.ChatRoomStatus.DISBANDED
 			  and (
 			    :cursorAt is null
 			    or r.lastMessageAt < :cursorAt

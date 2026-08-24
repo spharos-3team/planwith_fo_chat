@@ -20,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.planwith.planwith_fo_chat.application.port.in.ApplyChatMessageCreatedUseCase;
 import com.planwith.planwith_fo_chat.application.port.in.ApplyMeetingCreatedUseCase;
+import com.planwith.planwith_fo_chat.application.port.in.ApplyMeetingDisbandedUseCase;
 import com.planwith.planwith_fo_chat.application.port.in.ApplyMeetingParticipationChangedUseCase;
 import com.planwith.planwith_fo_chat.application.port.in.SaveChatMessageUseCase;
 import com.planwith.planwith_fo_chat.domain.chat.ChatRoom;
@@ -44,6 +45,9 @@ class ChatRoomApiIntegrationTests {
 
 	@Autowired
 	private ApplyChatMessageCreatedUseCase applyChatMessageCreatedUseCase;
+
+	@Autowired
+	private ApplyMeetingDisbandedUseCase applyMeetingDisbandedUseCase;
 
 	@Test
 	void listsCursorUnreadAndMarkRead() throws Exception {
@@ -133,5 +137,32 @@ class ChatRoomApiIntegrationTests {
 		mockMvc.perform(get("/api/v1/chat-rooms").header("X-Auth-User-Id", UUID.randomUUID()))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.data.content.length()").value(0));
+	}
+
+	@Test
+	void hidesDisbandedRoomFromListAndRead() throws Exception {
+		UUID hostUuid = UUID.randomUUID();
+		Instant now = Instant.parse("2026-08-24T00:20:00Z");
+		ChatRoom room = applyMeetingCreatedUseCase.apply(new ApplyMeetingCreatedUseCase.Command(
+				"hide-created",
+				UUID.randomUUID(),
+				hostUuid,
+				"해체될 방",
+				now
+		));
+		applyMeetingDisbandedUseCase.apply(new ApplyMeetingDisbandedUseCase.Command(
+				"hide-disband",
+				room.getMeetingUuid(),
+				now.plusSeconds(10)
+		));
+
+		mockMvc.perform(get("/api/v1/chat-rooms").header("X-Auth-User-Id", hostUuid))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.data.content.length()").value(0));
+
+		mockMvc.perform(post("/api/v1/chat-rooms/" + room.getChatRoomUuid() + "/read")
+						.header("X-Auth-User-Id", hostUuid)
+						.contentType(MediaType.APPLICATION_JSON))
+				.andExpect(status().isNotFound());
 	}
 }
