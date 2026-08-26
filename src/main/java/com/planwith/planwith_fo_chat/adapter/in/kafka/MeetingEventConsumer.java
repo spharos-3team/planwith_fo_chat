@@ -9,6 +9,8 @@ import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.stereotype.Component;
 
+import jakarta.annotation.PostConstruct;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -48,6 +50,11 @@ public class MeetingEventConsumer {
 		this.objectMapper = objectMapper;
 	}
 
+	@PostConstruct
+	void logConsumerReady() {
+		log.info("MeetingEventConsumer : listening for meeting.created/completed/disbanded/participation");
+	}
+
 	@KafkaListener(topics = "${app.kafka.created-topic}")
 	public void consumeCreated(
 			@Header(KafkaHeaders.RECEIVED_TOPIC) String topic,
@@ -60,6 +67,11 @@ public class MeetingEventConsumer {
 			return;
 		}
 		MeetingCreatedPayload body = envelope.payload();
+		log.info(
+				"MeetingEventConsumer : consumeCreated : eventId={} meetingUuid={}",
+				envelope.eventId(),
+				body.meetingUuid()
+		);
 		try {
 			applyMeetingCreatedUseCase.apply(new ApplyMeetingCreatedUseCase.Command(
 					envelope.eventId(),
@@ -70,10 +82,10 @@ public class MeetingEventConsumer {
 			));
 		}
 		catch (IllegalArgumentException exception) {
-			log.error("MeetingEventConsumer : consumeCreated : skip invalid event - eventId={}", envelope.eventId());
+			log.error("MeetingEventConsumer : consumeCreated : skip invalid event - eventId={}", envelope.eventId(), exception);
 		}
 		catch (RuntimeException exception) {
-			log.error("MeetingEventConsumer : consumeCreated : retry later - eventId={}", envelope.eventId());
+			log.error("MeetingEventConsumer : consumeCreated : retry later - eventId={}", envelope.eventId(), exception);
 			throw exception;
 		}
 	}
@@ -187,7 +199,7 @@ public class MeetingEventConsumer {
 			return objectMapper.readValue(payload, type);
 		}
 		catch (JsonProcessingException exception) {
-			log.error("MeetingEventConsumer : parse : invalid EventEnvelope JSON");
+			log.error("MeetingEventConsumer : parse : invalid EventEnvelope JSON", exception);
 			return null;
 		}
 	}
