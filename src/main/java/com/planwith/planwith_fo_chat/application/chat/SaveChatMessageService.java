@@ -78,9 +78,24 @@ public class SaveChatMessageService implements SaveChatMessageUseCase {
 				saved.getChatRoomUuid(),
 				saved.getMessageUuid(),
 				saved.getSenderUuid(),
-				saved.getContent(),
+				listPreview(saved),
 				saved.getCreatedAt()
 		));
 		return saved;
+	}
+
+	private String listPreview(ChatMessage saved) {
+		if (StringUtils.hasText(saved.getContent())) {
+			return saved.getContent();
+		}
+		if (saved.getFiles().isEmpty()) {
+			return saved.getContent();
+		}
+		return switch (saved.getFiles().get(0).getFileType()) {
+			case IMAGE -> "사진";
+			case VIDEO -> "동영상";
+			case AUDIO -> "음성";
+			case DOCUMENT, ETC -> "파일";
+		};
 	}
 }

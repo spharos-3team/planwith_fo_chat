@@ -1,7 +1,9 @@
 package com.planwith.planwith_fo_chat.adapter.in.web;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -14,9 +16,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
+
+import com.jayway.jsonpath.JsonPath;
 
 import com.planwith.planwith_fo_chat.application.port.in.ApplyChatMessageCreatedUseCase;
 import com.planwith.planwith_fo_chat.application.port.in.ApplyMeetingCreatedUseCase;
@@ -270,5 +275,52 @@ class ChatRoomApiIntegrationTests {
 		mockMvc.perform(get("/api/v1/chat-rooms/" + UUID.randomUUID() + "/messages")
 						.header("X-Auth-User-Id", hostUuid))
 				.andExpect(status().isNotFound());
+	}
+
+	@Test
+	void uploadsAndDownloadsChatFileForApprovedMember() throws Exception {
+		UUID hostUuid = UUID.randomUUID();
+		UUID pendingUuid = UUID.randomUUID();
+		Instant now = Instant.parse("2026-08-27T04:10:00Z");
+		ChatRoom room = applyMeetingCreatedUseCase.apply(new ApplyMeetingCreatedUseCase.Command(
+				"file-created",
+				UUID.randomUUID(),
+				hostUuid,
+				"파일 방",
+				now
+		));
+		applyMeetingParticipationChangedUseCase.apply(new ApplyMeetingParticipationChangedUseCase.Command(
+				"file-pending",
+				room.getMeetingUuid(),
+				pendingUuid,
+				"PENDING",
+				now.plusSeconds(1)
+		));
+		byte[] payload = "hello-file".getBytes();
+		String body = mockMvc.perform(multipart("/api/v1/chat-rooms/" + room.getChatRoomUuid() + "/files")
+						.file(new MockMultipartFile("file", "note.txt", "text/plain", payload))
+						.header("X-Auth-User-Id", hostUuid))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.data.fileType").value("DOCUMENT"))
+				.andExpect(jsonPath("$.data.name").value("note.txt"))
+				.andReturn()
+				.getResponse()
+				.getContentAsString();
+		String fileUuid = JsonPath.read(body, "$.data.fileUuid");
+
+		mockMvc.perform(get("/api/v1/chat-rooms/" + room.getChatRoomUuid() + "/files/" + fileUuid)
+						.header("X-Auth-User-Id", hostUuid))
+				.andExpect(status().isOk())
+				.andExpect(content().bytes(payload))
+				.andExpect(content().contentTypeCompatibleWith(MediaType.TEXT_PLAIN));
+
+		mockMvc.perform(get("/api/v1/chat-rooms/" + room.getChatRoomUuid() + "/files/" + fileUuid)
+						.header("X-Auth-User-Id", pendingUuid))
+				.andExpect(status().isForbidden());
+
+		mockMvc.perform(multipart("/api/v1/chat-rooms/" + room.getChatRoomUuid() + "/files")
+						.file(new MockMultipartFile("file", "note.txt", "text/plain", payload))
+						.header("X-Auth-User-Id", pendingUuid))
+				.andExpect(status().isForbidden());
 	}
 }
