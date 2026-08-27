@@ -6,7 +6,7 @@
 > 공통 응답: `ApiResponse<T>`  
 > 호출 경로: `Frontend → Gateway(:8000) → Chat(:8088)` (Access 검증은 Gateway. Chat은 JWT를 검증하지 않는다)
 
-최종 갱신: 2026-08-24 (#13 채팅 메시지 히스토리 REST)
+최종 갱신: 2026-08-27 (#17 채팅 파일 업로드)
 
 ---
 
@@ -38,7 +38,8 @@ OpenFeign 금지. 신원은 Gateway `X-Auth-User-Id`. Refresh Token을 JSON/URL/
 | ✅ | #5 | Read Model + 목록·읽음 API |
 | ✅ | #6 | 모임 해체 시 목록/입장 숨김, DB row 유지 |
 | ✅ | #12 | 모임 UUID로 채팅방 조회 + 목록 `meetingUuid` |
-| ✅ 구현 | #13 | 채팅 메시지 히스토리 REST |
+| ✅ | #13 | 채팅 메시지 히스토리 REST |
+| ✅ | #17 | 채팅 파일 업로드·조회 |
 
 ---
 
@@ -116,6 +117,8 @@ Key = `meetingUuid` (메시지 이벤트는 `chatRoomUuid`).
 | #5 | GET | `/api/v1/chat-rooms` | 내 채팅방 목록. cursor `cursorAt` + `cursorChatRoomUuid`, `size` 기본 20 최대 50 |
 | #12 | GET | `/api/v1/chat-rooms/by-meeting/{meetingUuid}` | 모임 상세 입장용. APPROVED만. DISBANDED/없으면 `CHAT_ROOM_NOT_FOUND` |
 | #13 | GET | `/api/v1/chat-rooms/{chatRoomUuid}/messages` | Mongo 히스토리. `before`+`size`(기본 20 최대 50). 역순. ENDED 조회 가능 |
+| #17 | POST | `/api/v1/chat-rooms/{chatRoomUuid}/files` | multipart `file`. APPROVED + ACTIVE. 최대 10MB. Mongo `chat_files` |
+| #17 | GET | `/api/v1/chat-rooms/{chatRoomUuid}/files/{fileUuid}` | 파일 바이트. APPROVED만. ENDED 조회 가능 |
 | #5 | POST | `/api/v1/chat-rooms/{chatRoomUuid}/read` | 읽음. body `lastReadMessageUuid` 선택. `unreadCount=0` |
 | #4 | WS | `/api/v1/chat/ws` | STOMP. 아래 WebSocket |
 
@@ -123,6 +126,9 @@ Key = `meetingUuid` (메시지 이벤트는 `chatRoomUuid`).
 `ENDED`는 목록에 남을 수 있다. `DISBANDED`는 목록·읽음에서 빠지고 `CHAT_ROOM_NOT_FOUND`.
 
 메시지 목록 응답: `content[]` (`messageUuid`, `chatRoomUuid`, `senderUuid`, `messageType`, `content`, `files`, `modified`, `deleted`, `createdAt`, `updatedAt`) + `nextBefore`.
+
+파일 업로드 응답: `fileUuid`, `fileType` (`IMAGE|VIDEO|AUDIO|DOCUMENT|ETC`), `url` (`/api/v1/chat-rooms/{chatRoomUuid}/files/{fileUuid}`), `name`.  
+이 `url`을 STOMP `files`에 넣어 전송한다. 파일만 보내면 목록 lastMessage는 `사진`/`동영상`/`음성`/`파일`.
 
 ---
 
@@ -140,9 +146,15 @@ Key = `meetingUuid` (메시지 이벤트는 `chatRoomUuid`).
 
 ```json
 {
-  "messageType": "TEXT",
-  "content": "안녕",
-  "files": []
+  "messageType": "FILE",
+  "content": null,
+  "files": [
+    {
+      "fileType": "IMAGE",
+      "url": "/api/v1/chat-rooms/{chatRoomUuid}/files/{fileUuid}",
+      "name": "map.png"
+    }
+  ]
 }
 ```
 

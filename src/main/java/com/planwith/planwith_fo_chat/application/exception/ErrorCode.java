@@ -9,6 +9,8 @@ public enum ErrorCode {
 	CHAT_MEMBER_NOT_ALLOWED(HttpStatus.FORBIDDEN, "CHAT_MEMBER_NOT_ALLOWED", "채팅방에 참여한 회원만 메시지를 보낼 수 있습니다."),
 	CHAT_MESSAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "CHAT_MESSAGE_NOT_FOUND", "메시지를 찾을 수 없습니다."),
 	CHAT_MESSAGE_NOT_SENDER(HttpStatus.FORBIDDEN, "CHAT_MESSAGE_NOT_SENDER", "본인 메시지만 수정하거나 삭제할 수 있습니다."),
+	CHAT_FILE_NOT_FOUND(HttpStatus.NOT_FOUND, "CHAT_FILE_NOT_FOUND", "파일을 찾을 수 없습니다."),
+	INVALID_CHAT_FILE(HttpStatus.BAD_REQUEST, "INVALID_CHAT_FILE", "업로드할 수 없는 파일입니다."),
 	UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "인증이 필요합니다."),
 	FORBIDDEN(HttpStatus.FORBIDDEN, "FORBIDDEN", "접근이 거부되었습니다.");
 
